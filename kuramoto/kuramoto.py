@@ -1,10 +1,9 @@
 import numpy as np
 from scipy.integrate import odeint
 
-
 class Kuramoto:
 
-    def __init__(self, coupling=1, dt=0.01, T=10, n_nodes=None, natfreqs=None):
+    def __init__(self, coupling=1, dt=0.01, T=10, n_nodes=None, natfreqs=None, oneD=False ):
         '''
         coupling: float
             Coupling strength. Default = 1. Typical values range between 0.4-2
@@ -44,12 +43,12 @@ class Kuramoto:
         '''
         return 2 * np.pi * np.random.random(size=self.n_nodes)
 
-    def derivative(self, angles_vec, t, adj_mat, coupling):
+    def derivative_pairwise(self, angles_vec, t, adj_mat, coupling):
         '''
         Compute derivative of all nodes for current state, defined as
 
         dx_i    natfreq_i + k  sum_j ( Aij* sin (angle_j - angle_i) )
-        ---- =             ---
+        ---- =             ---s
          dt                M_i
 
         t: for compatibility with scipy.odeint
@@ -61,6 +60,43 @@ class Kuramoto:
         interactions = adj_mat * np.sin(angles_j - angles_i)  # Aij * sin(j-i)
 
         dxdt = self.natfreqs + coupling * interactions.sum(axis=0)  # sum over incoming interactions
+
+        return dxdt
+
+    def derivative_pairwise1D(self, angles_vec, t, adj_mat, coupling):
+
+        assert len(angles_vec) == len(self.natfreqs) == len(adj_mat), \
+            'Input dimensions do not match, check lengths'
+
+        interactions = np.zeros(len(angles_vec))  # Aij * sin(j-i)
+        for i in range(len(angles_vec)):
+            if i == len(angles_vec)-1: #Inforcing PBC
+                interactions[i] = np.sin(angles_vec[i-1] - angles_vec[i])+np.sin(angles_vec[0]-angles_vec[i])
+            else:
+                interactions[i] = np.sin(angles_vec[i-1] - angles_vec[i])+np.sin(angles_vec[i+1]-angles_vec[i])
+
+        dxdt = self.natfreqs + coupling * interactions  # sum over incoming interactions
+
+        return dxdt
+
+    def derivative_triowise1D(self, angles_vec, t, adj_mat, coupling):
+
+        assert len(angles_vec) == len(self.natfreqs) == len(adj_mat), \
+            'Input dimensions do not match, check lengths'
+
+        interactions = np.zeros(len(angles_vec))
+
+        #Pairwise and Trio-wise interactions
+        for i in range(len(angles_vec)):
+            if i == len(angles_vec)-1: #Inforcing PBC
+                #interactions[i] = np.sin(angles_vec[i-1] - angles_vec[i])+np.sin(angles_vec[0]-angles_vec[i])
+                interactions[i] = np.sin(angles_vec[0]+angles_vec[i-1]-2*angles_vec[i])
+            else:
+                #interactions[i] = np.sin(angles_vec[i-1] - angles_vec[i])+np.sin(angles_vec[i+1]-angles_vec[i])
+                interactions[i] = np.sin(angles_vec[i+1]+angles_vec[i-1]-2*angles_vec[i])
+
+        dxdt = self.natfreqs + coupling * interactions  # sum over incoming interactions
+
         return dxdt
 
     def integrate(self, angles_vec, adj_mat):
@@ -71,7 +107,29 @@ class Kuramoto:
         coupling = self.coupling / n_interactions  # normalize coupling by number of interactions
 
         t = np.linspace(0, self.T, int(self.T/self.dt))
-        timeseries = odeint(self.derivative, angles_vec, t, args=(adj_mat, coupling))
+        timeseries = odeint(self.derivative_pairwise, angles_vec, t, args=(adj_mat, coupling))
+        return timeseries.T  # transpose for consistency (act_mat:node vs time)
+
+    def integrate1D(self, angles_vec, adj_mat):
+        '''Updates all states by integrating state of all nodes'''
+        # Coupling term (k / Mj) is constant in the integrated time window.
+        # Compute it only once here and pass it to the derivative function
+        n_interactions = (adj_mat != 0).sum(axis=0)  # number of incoming interactions
+        coupling = self.coupling / n_interactions  # normalize coupling by number of interactions
+
+        t = np.linspace(0, self.T, int(self.T/self.dt))
+        timeseries = odeint(self.derivative_pairwise1D, angles_vec, t, args=(adj_mat, coupling))
+        return timeseries.T  # transpose for consistency (act_mat:node vs time)
+
+    def integrate1D_trio(self, angles_vec, adj_mat):
+        '''Updates all states by integrating state of all nodes'''
+        # Coupling term (k / Mj) is constant in the integrated time window.
+        # Compute it only once here and pass it to the derivative function
+        n_interactions = (adj_mat != 0).sum(axis=0)  # number of incoming interactions
+        coupling = self.coupling / n_interactions  # normalize coupling by number of interactions
+
+        t = np.linspace(0, self.T, int(self.T/self.dt))
+        timeseries = odeint(self.derivative_triowise1D, angles_vec, t, args=(adj_mat, coupling))
         return timeseries.T  # transpose for consistency (act_mat:node vs time)
 
     def run(self, adj_mat=None, angles_vec=None):
@@ -92,6 +150,44 @@ class Kuramoto:
             angles_vec = self.init_angles()
 
         return self.integrate(angles_vec, adj_mat)
+
+    def run1D(self, adj_mat=None, angles_vec=None):
+        '''
+        adj_mat: 2D nd array
+            Adjacency matrix representing connectivity.
+        angles_vec: 1D ndarray, optional
+            States vector of nodes representing the position in radians.
+            If not specified, random initialization [0, 2pi].
+
+        Returns
+        -------
+        act_mat: 2D ndarray
+            Activity matrix: node vs time matrix with the time series of all
+            the nodes.
+        '''
+        if angles_vec is None:
+            angles_vec = self.init_angles()
+
+        return self.integrate1D(angles_vec, adj_mat)
+
+    def run1D_trio(self, adj_mat=None, angles_vec=None):
+        '''
+        adj_mat: 2D nd array
+            Adjacency matrix representing connectivity.
+        angles_vec: 1D ndarray, optional
+            States vector of nodes representing the position in radians.
+            If not specified, random initialization [0, 2pi].
+
+        Returns
+        -------
+        act_mat: 2D ndarray
+            Activity matrix: node vs time matrix with the time series of all
+            the nodes.
+        '''
+        if angles_vec is None:
+            angles_vec = self.init_angles()
+
+        return self.integrate1D_trio(angles_vec, adj_mat)
 
     @staticmethod
     def phase_coherence(angles_vec):
@@ -118,4 +214,3 @@ class Kuramoto:
         # Average across complete time window - mean angular velocity (freq.)
         meanfreq = integral / self.T
         return meanfreq
-
