@@ -4,7 +4,7 @@ import matplotlib.animation as animation
 from kuramoto import Kuramoto
 
 
-def plot_activity(act_mat):
+def plot_activity(act_mat, filename):
     """
     Plot sin(angle) vs time for each oscillator time series.
 
@@ -15,13 +15,17 @@ def plot_activity(act_mat):
     """
     _, ax = plt.subplots(figsize=(12, 4))
     ax.plot(np.sin(act_mat.T))
-    ax.set_xlabel('Time', fontsize=25)
-    ax.set_ylabel(r'$\sin(\theta)$', fontsize=25)
+    ax.set_xlabel('Time', fontsize=15)
+    ax.set_ylabel(r'$\sin(\theta)$', fontsize=15)
+    #ax.set_title(f'Coupling = {coupling}' )
+
+    plt.savefig("../activity_coupling_"+filename+".png")
     plt.show()
+
     return ax
 
 
-def plot_phase_coherence(act_mat):
+def plot_phase_coherence(act_mat, filename):
     """
     Plot order parameter phase_coherence vs time.
 
@@ -35,7 +39,11 @@ def plot_phase_coherence(act_mat):
     ax.set_ylabel('Order parameter', fontsize=20)
     ax.set_xlabel('Time', fontsize=20)
     ax.set_ylim((-0.01, 1))
+    #ax.set_title(f'Coupling = {coupling}' )
+
+    plt.savefig("../phasecoherence_coupling_"+filename+".png")
     plt.show()
+
     return ax
 
 # Plot oscillators in complex plane at times t = 0, 250, 500
@@ -60,7 +68,7 @@ def oscillators_comp(act_mat):
 
     plt.show()
 
-def animate_oscillators(act_mat, frame_jump=30):
+def animate_oscillators(act_mat, filename, frame_jump=30):
 
     fig, ax = plt.subplots(figsize=(5, 5),
                            subplot_kw={
@@ -92,6 +100,8 @@ def animate_oscillators(act_mat, frame_jump=30):
         fig, animate, frames=act_mat.shape[1],
         init_func=init, interval=frame_jump,
         blit=False, repeat=False)
+
+    ani.save(filename = "../"+filename + ".gif", writer = "pillow")
 
     plt.show()
     plt.close()
