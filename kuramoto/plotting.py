@@ -45,7 +45,7 @@ def plot_phase_coherence(act_mat, filename=None):
     if filename is not None:
         plt.savefig("../phasecoherence_coupling_"+filename+".png")
 
-    plt.show()
+    #plt.show()
 
     return ax
 

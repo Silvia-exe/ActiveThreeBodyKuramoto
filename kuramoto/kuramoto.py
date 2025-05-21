@@ -84,6 +84,7 @@ class Kuramoto:
         interactions_trios = adj_mat_triangle * np.sin(2*angles_j-angles_l-angles_i)
         dxdt += self.alpha*coupling*interactions_trios.sum(axis=0).sum(axis=0)
 
+        print(dxdt)
         #quit()
         #dxdt = self.natfreqs + coupling * interactions  # sum over incoming interactions
 

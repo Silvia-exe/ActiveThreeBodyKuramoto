@@ -40,7 +40,7 @@ def adjacency_NtoN_1D(N):
     return adj_mat
 
 def main():
-    N = 6 #Number of oscillators
+    N = 3 #Number of oscillators
     T = 10 #Simulation time
     dt = 0.01 #Integration time step
     coupling = 2.0 #Value(s) of coupling weights.
