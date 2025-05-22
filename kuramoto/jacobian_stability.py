@@ -11,43 +11,29 @@ lam = sp.Symbol('lambda')
 
 #Defining variables
 variables_movfr = [phi2, phi3] #ph2 = th2-th1 and ph3 = th3-th1
-f_N6 = []
 
 # Número de nodos
 N = 6
+
 # Para nodos 0 a 5 (th1 a th6)
-for i in range(N):
-    th_i = th[i]
-    w_i = w[i]
+def function_vect(N):
+    f_N = []
+    for i in range(N):
+        th_i = th[i]
+        w_i = w[i]
 
-    # Vecinos inmediatos (en red tipo anillo)
-    left = th[(i - 1) % N]
-    right = th[(i + 1) % N]
+        # Vecinos inmediatos (en red tipo anillo)
+        th_l = th[(i - 1) % N]
+        th_r = th[(i + 1) % N]
 
-    # Término K1: acoplamientos bilineales con vecinos
-    term_K1 = (sp.sin(left - th_i) + sp.sin(right - th_i)) * K1 / 2
+        # Término K1: acoplamientos bilineales con vecinos
+        term_K1 = K1/2 *(sp.sin(th_l - th_i) + sp.sin(th_r - th_i))
+        term_K2 = K2 / 2 * sp.sin(2*th_l - th_r - th_i) + sp.sin(2*th_r - th_l - th_i)
 
-    # Término K2: combinaciones de tres cuerpos
-    # Definimos los tres nodos con los que se hace la interacción de tipo K2
-    k2_terms = []
-    triplets = [
-        ((i + 1) % N, (i - 1) % N),
-        ((i + 2) % N, (i + 1) % N),
-        ((i - 2) % N, (i - 1) % N)
-    ]
-    for j, k in triplets:
-        th_j = th[j]
-        th_k = th[k]
-        k2_terms.extend([
-            sp.sin(2*th_j - th_k - th_i),
-            sp.sin(2*th_k - th_j - th_i)
-        ])
-
-    term_K2 = K2 / 6 * sum(k2_terms)
-
-    # Ecuación total para el nodo i
-    f_i = w_i + term_K1 + term_K2
-    f_N6.append(f_i)
+        # Ecuación total para el nodo i
+        f_i = w_i + term_K1 + term_K2
+        f_N.append(f_i)
+    return f_N
 
 #Defining function vectors for three body system and moving frame three body system
 '''f_N3 = [
@@ -62,17 +48,18 @@ f_movfr_N3 = [
 ]'''
 
 #Symbolic Jacobian
+f_N6 = function_vect(6)
 J = sp.Matrix(f_N6).jacobian(th)
 #sp.pprint(J)
 
 #Substituting variables
 subs = {
     th[0]: 0,
-    th[1]: 0,#2*np.pi/6,
-    th[2]: 0,#4*np.pi/6,
-    th[3]: 0,#6*np.pi/6,
-    th[4]: 0,#8*np.pi/6,
-    th[5]: 0,#10*np.pi/6,
+    th[1]: np.pi/3,
+    th[2]: 2*np.pi/3,
+    th[3]: np.pi,
+    th[4]: 4*np.pi/3,
+    th[5]: 5*np.pi/3,
     w[0]: 0,
     w[1]: 0,
     w[2]: 0,
@@ -80,7 +67,7 @@ subs = {
     w[4]: 0,
     w[5]: 0,
     K1: 1,
-    K2: 20
+    K2: 1
 }
 
 #Defining characteristic matrix and printing characteristic equation
@@ -92,9 +79,3 @@ subs = {
 J_eval = J.subs(subs)
 eigenvalues = J_eval.eigenvals()
 print(np.array(list(eigenvalues.items())))
-
-#Printing and feeding eigenvalues to sorting algorithm
-#print("Jacobiano evaluado en el punto fijo:")
-#sp.pprint(J_eval)
-#print("\nEigenvalores:")
-#print(eigenvalues)
