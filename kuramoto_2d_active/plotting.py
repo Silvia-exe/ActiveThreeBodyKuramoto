@@ -1,14 +1,18 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.animation as animation
+from kuramoto import Kuramoto
 
-#Compute global order parameter R_t
-def phase_coherence(angles_vec):
-        suma = sum([(np.e ** (1j * i)) for i in angles_vec])
-        return abs(suma / len(angles_vec))
 
-#Plot sin(angle) as a function of time for each oscillator.
 def plot_activity(act_mat, filename=None):
+    """
+    Plot sin(angle) vs time for each oscillator time series.
+
+    activity: 2D-np.ndarray
+        Activity time series, node vs. time; ie output of Kuramoto.run()
+    return:
+        matplotlib axis for further customization
+    """
     _, ax = plt.subplots(figsize=(12, 4))
     ax.plot(np.sin(act_mat.T))
     ax.set_xlabel('Time', fontsize=15)
@@ -21,10 +25,18 @@ def plot_activity(act_mat, filename=None):
 
     return ax
 
-#Plot order parameter of system as a function of time.
+
 def plot_phase_coherence(act_mat, filename=None):
+    """
+    Plot order parameter phase_coherence vs time.
+
+    activity: 2D-np.ndarray
+        Activity time series, node vs. time; ie output of Kuramoto.run()
+    return:
+        matplotlib axis for further customization
+    """
     _, ax = plt.subplots(figsize=(8, 3))
-    ax.plot([phase_coherence(vec) for vec in act_mat.T], 'o')
+    ax.plot([Kuramoto.phase_coherence(vec) for vec in act_mat.T], 'o')
     ax.set_ylabel('Order parameter', fontsize=20)
     ax.set_xlabel('Time', fontsize=20)
     ax.set_ylim((-0.01, 1))
@@ -33,13 +45,13 @@ def plot_phase_coherence(act_mat, filename=None):
     if filename is not None:
         plt.savefig("../phasecoherence_coupling_"+filename+".png")
 
-    #plt.show()
+    plt.show()
 
     return ax
 
-# Plot oscillators in complex plane at times t = 0, T/2, T
+# Plot oscillators in complex plane at times t = 0, 250, 500
 def oscillators_comp(act_mat):
-    fig, axes = plt.subplots(ncols=3, nrows=1, figsize=(15, 5),
+    fig, axes = plt.subplots(ncols=2, nrows=1, figsize=(15, 5),
                          subplot_kw={
                              "ylim": (-1.1, 1.1),
                              "xlim": (-1.1, 1.1),
@@ -47,18 +59,17 @@ def oscillators_comp(act_mat):
                              "ylabel": r'$\sin(\theta)$',
                          })
 
-    times = [0, int(len(act_mat[0])/2), -1]
+    times = [0, int(len(act_mat[0])/2), int(len(act_mat[0])-1)]
     for ax, time in zip(axes, times):
+        #print(times)
         ax.plot(np.cos(act_mat[:, time]),
                 np.sin(act_mat[:, time]),
                 'o',
                 markersize=10)
         ax.set_title(f'Time = {time}')
 
-    plt.suptitle(r'$K_1 = 1, K_2 = 3,\alpha = 2\pi/3$ ', size = "x-large")
     plt.show()
 
-#Animates oscillators in a unit circle (cos(theta) vs sin(theta))
 def animate_oscillators(act_mat, filename=None, frame_jump=30):
 
     fig, ax = plt.subplots(figsize=(5, 5),

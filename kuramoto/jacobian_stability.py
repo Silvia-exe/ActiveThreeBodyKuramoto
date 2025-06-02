@@ -1,21 +1,20 @@
 import sympy as sp
 import numpy as np
 
-
 #Defining symbols
-th = sp.symbols('th1:7')  # th1 to th6 -> tuple of 6 elements
-w = sp.symbols('w1:7')        # w1 to w6
-K1, K2 = sp.symbols('K1 K2')
-phi2, phi3 = sp.symbols('phi2 phi3')
-lam = sp.Symbol('lambda')
+th = sp.symbols('th1:7') # th1 to th6
+w = sp.symbols('w1:7') # w1 to w6
+K1, K2 = sp.symbols('K1 K2') #Coupling parameters
+phi2, phi3 = sp.symbols('phi2 phi3') #For N=3 nodes, reduced frame of reference
+lam = sp.Symbol('lambda') #For eigenvalues
 
 #Defining variables
 variables_movfr = [phi2, phi3] #ph2 = th2-th1 and ph3 = th3-th1
 
-# Número de nodos
+#Number of nodes
 N = 6
 
-# Para nodos 0 a 5 (th1 a th6)
+#Defines the N-long function vector
 def function_vect(N):
     f_N = []
     for i in range(N):
@@ -35,7 +34,7 @@ def function_vect(N):
         f_N.append(f_i)
     return f_N
 
-#Defining function vectors for three body system and moving frame three body system
+#Defining function vectors for three body system and moving frame three body system, just in case
 '''f_N3 = [
     w[0] + K1/2*(sp.sin(th2-th1) + sp.sin(th3-th1)) + K2/2*(sp.sin(2*th2 - th3 - th1) + sp.sin(2*th3 - th2 - th1)),
     w[1] + K1/2*(sp.sin(th1-th2) + sp.sin(th3-th2)) + K2/2*(sp.sin(2*th1 - th2 - th3) + sp.sin(2*th3 - th2 - th1)),
@@ -67,7 +66,7 @@ subs = {
     w[4]: 0,
     w[5]: 0,
     K1: 1,
-    K2: 1
+    K2: 10
 }
 
 #Defining characteristic matrix and printing characteristic equation
