@@ -5,6 +5,9 @@ import plotting as kplt
 import numpy as np
 import math
 
+import matplotlib as mpl
+mpl.rcParams['animation.ffmpeg_path'] = r'C:\\ffmpeg-7.1.1-full_build\\bin\\ffmpeg.exe'
+
 def box_muller_noise():
     U1 = np.random.uniform()
     U2 = np.random.uniform()
@@ -18,8 +21,8 @@ def move_noise(r_v, th):
     new_r_v = np.copy(r_v)
     for i in range(len(r_v)):
         nx, ny = box_muller_noise()
-        dx = v*dt*np.cos(th[i]) + 1/gamma * nx
-        dy = v*dt*np.sin(th[i]) + 1/gamma * ny
+        dx = v*dt*np.cos(th[i]) + (2*1/gamma*dt) * nx
+        dy = v*dt*np.sin(th[i]) + (2*1/gamma*dt) * ny
         #dx = v*dt + 1/gamma * nx
         #dy = v*dt + 1/gamma * ny
         new_r_v[i] += [dx, dy]
@@ -40,28 +43,32 @@ def kuramoto_int(th, neigh):
     for i in range(len(th)):
         th_l = th[int(neigh[i,0])]
         th_r = th[int(neigh[i,1])]
-        new_th[i] += dt*K1/2*(np.sin(th_l-th[i]) + np.sin(th_r-th[i])) + K2/2 * (np.sin(2*th_r-th_l-th[i])+np.sin(2*th_l-th_r+th[i]))
+        new_th[i] += dt*(K1/2*(np.sin(th_l-th[i]) + np.sin(th_r-th[i])) + K2/2 * (np.sin(2*th_r-th_l-th[i])+np.sin(2*th_l-th_r-th[i])))
     return new_th
 
-#N to N connections of oscillators
 def kuramoto_global(th):
+
     new_th = np.copy(th)
-    for i in range(len(th)):
-        for j in range(len(th)):
-            new_th[i] += dt*K1/N*(np.sin(th[j]-th[i]))
+
+    for i in range(N):
+
+        pairwise = np.sum(np.sin(th - th[i]))
+        pairwise *= K1 / N
+
+        threewise = 0
+        for j in range(N):
+            for l in range(N):
+                if j != i and l != i:
+                    threewise += np.sin(2 * th[j] - th[l] - th[i]) + np.sin(2 * th[l] - th[j] - th[i])
+        threewise *= K2 / N**2
+
+        new_th[i] += dt * (pairwise + threewise)
+
     return new_th
 
-#Detects if particle is at boundary and implements periodic boundary conditions
+#Implements periodic boundary conditions
 def periodic_bc(r_new):
-    #Detect boundary crossing and implement PBC
-    for p in range(N):
-        for i in range(2):
-            if r_new[p,i] < 0:
-                r_new[p,i] += Lx
-            elif r_new[p,i] > Lx:
-                r_new[p,i] -= Lx
-
-    return r_new
+    return r_new % Lx
 
 #Initializes N particles with N oscillators
 def initialize_r0():
@@ -74,16 +81,17 @@ def find_neighbors(r_v):
     r_vt = np.copy(r_v)
     neigh = np.zeros((len(r_v),2))
     temp = np.zeros(len(r_v))
-    for i in range(len(r_v)):
-        r_i = r_vt[i]
-        for j in range(len(r_v)):
-            if j != i:
-                temp[j] = math.hypot(r_i[0]-r_vt[j,0], r_i[1]-r_vt[j,1])
-            else: temp[j] = Lx
+    for i in range(N):
+        dr = r_v - r_v[i]
+        dr -= Lx * np.round(dr / Lx)
 
-        neigh[i,0] = np.argmin(temp)
-        temp[np.argmin(temp)] = 2*Lx #Biggest system number
-        neigh[i,1] = np.argmin(temp)
+        distances = np.linalg.norm(dr, axis=1)
+        distances[i] = np.inf  # Ignore self
+
+        nearest = np.argpartition(distances, 2)[:2]
+        nearest = nearest[np.argsort(distances[nearest])]
+
+        neigh[i] = nearest
     return neigh
 
 #Produces animation only
@@ -122,16 +130,24 @@ def animate_from_data(filename = None):
     sc = ax.scatter(pos_mat[:, 0, 0], pos_mat[:, 1, 0], c=np.sin(act_mat[:, 0]), norm= normalize, cmap="viridis", edgecolor="black", s = 100)
     cb = plt.colorbar(sc)
     cb.set_label(r'sin($\theta$)')
+    plt.suptitle(f"$K_1$ = {K1}, $K_2$ = {K2}, v = {v}")
+
+    time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
 
     def update(frame):
+        time = frame * dt
         sc.set_offsets(pos_mat[:, :, frame])
         sc.set_array(np.sin(act_mat[:, frame]))
-        return sc,
+        time_text.set_text(f'Time = {time:.2f}')
+        return sc, time_text
 
-    ani = animation.FuncAnimation(fig, update, frames=act_mat.shape[1], interval=20, blit=True)
+    skip = 2  # Use every 3rd frame
+    frames = range(0, act_mat.shape[1], skip)
+    ani = animation.FuncAnimation(fig, update, frames=frames, interval=20, blit=True)
 
     if filename is not None:
-        ani.save(filename = "../"+filename + "anim.gif", writer = "pillow")
+        writervideo = animation.FFMpegWriter(fps=60)
+        ani.save(filename = "../"+filename + "anim.mp4", writer = writervideo)
     #plt.show()
 
 def plot_from_data(filename = None):
@@ -166,17 +182,39 @@ def plot_from_data(filename = None):
     #plt.show()
 
 
+
 N= 100#number of particles
 T = 150
-Lx = 10 #Box size
-K1_v = [1,0,1,3,1] #Pairwise interaction parameter
-K2_v = [0,1,1,1,3] #Trio-wise interaction parameter
-dt = 0.03 #Integration step
-v = 1 #Internal particle velocity
+Lx = 5 #Box size
+K1_v = [1,0,1,3,1,1,1] #Pairwise interaction parameter
+K2_v = [0,1,1,1,3,10,100] #Trio-wise interaction parameter
+K1 = 1
+K2 = 100
+dt = 0.01 #Integration step
+v = 1#Internal particle velocity
 gamma = 10
 t = np.linspace(0,T,int(T/dt))
 
 #kplt.animate_oscillators(act_mat)
+r_0, th_0 = initialize_r0()
+#th_0 = [2*np.pi/3, 2*np.pi/3, -2*np.pi/3]
+neigh = find_neighbors(r_0)
+act_mat = np.reshape(th_0, (N,1))
+pos_mat = np.zeros((N, 2, len(t)+1))
+pos_mat[:, :, 0] = r_0
+
+'''for i,_ in enumerate(t):
+    th_0 = kuramoto_int(th_0, neigh)
+    r_0 = move(r_0,th_0)
+    neigh = find_neighbors(r_0)
+    pos_mat[:, :, i+1] = r_0
+    act_mat = np.column_stack((act_mat,th_0))
+
+filename = "K1_"+str(K1)+"_K2_"+str(K2)+"_v_"+str(v)
+kplt.plot_phase_coherence_pair_three(act_mat, filename)
+animate_from_data(filename)
+plot_from_data(filename)'''
+
 
 for j in range(len(K1_v)):
     K1 = K1_v[j]
@@ -190,18 +228,22 @@ for j in range(len(K1_v)):
 
     for i,_ in enumerate(t):
         th_0 = kuramoto_int(th_0, neigh)
-        r_0 = move_noise(r_0,th_0)
+        r_0 = move(r_0,th_0)
         neigh = find_neighbors(r_0)
         pos_mat[:, :, i+1] = r_0
         act_mat = np.column_stack((act_mat,th_0))
 
     filename = "K1_"+str(K1)+"_K2_"+str(K2)+"_v_"+str(v)
-    kplt.plot_phase_coherence(act_mat,filename)
+    kplt.plot_phase_coherence_pair_three(act_mat, filename)
     animate_from_data(filename)
     plot_from_data(filename)
 
 #kplt.plot_phase_coherence(act_mat)
-#animate_from_data()
-#plot_from_data()
+#kplt.animate_oscillators(act_mat)
+#kplt.plot_activity(act_mat)
+#filename = "K1_"+str(K1)+"_K2_"+str(K2)+"_v_"+str(v)
+#kplt.plot_phase_coherence_pair_three(act_mat, filename)
+#animate_from_data(filename)
+#plot_from_data(filename)
 
 #animate()

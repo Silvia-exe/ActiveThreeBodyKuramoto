@@ -7,6 +7,16 @@ def phase_coherence(angles_vec):
         suma = sum([(np.e ** (1j * i)) for i in angles_vec])
         return abs(suma / len(angles_vec))
 
+#Compute global order parameter R_t
+def phase_coherence_pair(angles_vec):
+        suma = sum([(np.e ** (1j * 2*i)) for i in angles_vec])
+        return abs(suma / len(angles_vec))
+
+#Compute global order parameter R_t
+def phase_coherence_three(angles_vec):
+        suma = sum([(np.e ** (1j * 3*i)) for i in angles_vec])
+        return abs(suma / len(angles_vec))
+
 #Plot sin(angle) as a function of time for each oscillator.
 def plot_activity(act_mat, filename=None):
     _, ax = plt.subplots(figsize=(12, 4))
@@ -32,6 +42,25 @@ def plot_phase_coherence(act_mat, filename=None):
 
     if filename is not None:
         plt.savefig("../phasecoherence_coupling_"+filename+".png")
+
+    #plt.show()
+
+    return ax
+
+#Plot order parameter of system as a function of time.
+def plot_phase_coherence_pair_three(act_mat, filename=None):
+    _, ax = plt.subplots()#figsize=(8, 4))
+    ax.plot([phase_coherence(vec) for vec in act_mat.T], label = "$R_1$")
+    ax.plot([phase_coherence_pair(vec) for vec in act_mat.T], label = "$R_2$")
+    ax.plot([phase_coherence_three(vec) for vec in act_mat.T], label = "$R_3$")
+    ax.set_ylabel(r'R($\theta$)', fontsize=15)
+    ax.set_xlabel('Time [t]', fontsize=15)
+    ax.legend()
+    #ax.set_ylim((-0.01, 1))
+    #ax.set_title(f'Coupling = {coupling}' )
+
+    if filename is not None:
+        plt.savefig("../phasecoherence_k2k3_"+filename+".png")
 
     #plt.show()
 
