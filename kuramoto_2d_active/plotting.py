@@ -3,6 +3,9 @@ import matplotlib.animation as animation
 import matplotlib.colors as colors
 import matplotlib.cm as cm
 import numpy as np
+
+'''Auxiliary library for actkurpy, for plotting and getting order parameters from act_mat and pos_mat'''
+
 #Compute global order parameter R_t
 def phase_coherence(angles_vec):
         suma = sum([(np.e ** (1j * i)) for i in angles_vec])
@@ -68,7 +71,15 @@ def return_phase_mean(act_mat):
     R2_mean = np.mean(np.array([phase_coherence_pair(vec) for vec in act_mat.T])[int(-0.1*act_mat.shape[1]):])
     R3_mean = np.mean(np.array([phase_coherence_three(vec) for vec in act_mat.T])[int(-0.1*act_mat.shape[1]):])
 
-    return [R1_mean, R2_mean, R3_mean]
+    return (R1_mean, R2_mean, R3_mean)
+
+#Returns the standard deviation of the phase coherence R1, R2 and R3 for the last 10% of the points
+def return_phase_std(act_mat):
+    R1_std = np.std(np.array([phase_coherence(vec) for vec in act_mat.T])[int(-0.1*act_mat.shape[1]):])
+    R2_std = np.std(np.array([phase_coherence_pair(vec) for vec in act_mat.T])[int(-0.1*act_mat.shape[1]):])
+    R3_std = np.std(np.array([phase_coherence_three(vec) for vec in act_mat.T])[int(-0.1*act_mat.shape[1]):])
+
+    return (R1_std, R2_std, R3_std)
 
 # Plot oscillators in complex plane at times t = 0, T/2, T
 def oscillators_comp(act_mat):
@@ -136,14 +147,16 @@ def animate_active_oscillators(act_mat, pos_mat, title, Lx = 5, dt = 0.01, show 
     cb.set_label(r'sin($\theta$)')
     plt.suptitle(title)
 
-    time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
+    time_text = ax.text(0.017, 0.952, '', transform=ax.transAxes, bbox=dict(facecolor='white', edgecolor='black', alpha = 0.8))
+    R1_text = ax.text(0.017, 0.765, '', transform=ax.transAxes, bbox=dict(facecolor='white', edgecolor='black', alpha = 0.8))
 
     def update(frame):
         time = frame * dt
         sc.set_offsets(pos_mat[:, :, frame])
         sc.set_array(np.sin(act_mat[:, frame]))
         time_text.set_text(f'Time = {time:.2f}')
-        return sc, time_text
+        R1_text.set_text(f'$R_1$ = {phase_coherence(act_mat[:, frame]):.2f}\n$R_2$ = {phase_coherence_pair(act_mat[:, frame]):.2f}\n$R_3$ = {phase_coherence_three(act_mat[:, frame]):.2f}')
+        return sc, time_text, R1_text
 
     skip = 2  # Use every 3rd frame
     frames = range(0, act_mat.shape[1], skip)

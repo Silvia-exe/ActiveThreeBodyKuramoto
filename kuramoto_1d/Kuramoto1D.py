@@ -4,9 +4,12 @@ import matplotlib.pyplot as plt
 import plotting as kplt
 from scipy.integrate import odeint
 
-#Returns a small random number between 0.01 * (-pi, pi)
+#Returns a small random number between 0.05 * (-pi, pi)
 def epsilon_i():
-    return 0.01*np.random.uniform(-np.pi,np.pi, N)
+    return 0.05*np.random.uniform(-np.pi,np.pi, N)
+
+def random_angles():
+    return np.random.uniform(-np.pi,np.pi, N)
 
 #Interactions with immediate neighbors
 def pairwise_interactions(angles):
@@ -34,25 +37,37 @@ def integrate(angles,t):
     timeseries = odeint(derivative, angles, t)
     return timeseries.T
 
-N = 6 #Number of nodes
-T = 10 #Total integration time
+def adim_derivative(angles,t):
+    dxdt = nat_freq + K12*pairwise_interactions(angles)+threewise_interactions(angles)
+    return dxdt
+
+def adim_integrate(angles,t):
+    timeseries = odeint(adim_derivative,angles,t)
+    return timeseries.T
+
+
+N = 3 #Number of nodes
+T = 50 #Total integration time
 dt = 0.01 #Time step
 t = np.linspace(0,T,int(T/dt)) #Timesteps to integrate
 nat_freq = np.zeros(N) #Natural frequencies of oscillators
 pert = epsilon_i() #Vector of small angle perturbations
 
 K1 = 1
-K2 = 3
+K2 = 4
+
+K12 = 0
 
 #init_angles = np.array([2*np.pi*np.random.uniform(-1,1) for _ in range(N)]) #Random initial angles
 
 #init_angles = [0,np.pi/3,2*np.pi/3,3*np.pi/3,4*np.pi/3,5*np.pi/3]
-init_angles = [0,2*np.pi/3,4*np.pi/3,6*np.pi/3,8*np.pi/3,10*np.pi/3]
-init_pert = init_angles+pert
+init_angles = (-np.pi/3,0,np.pi/3)
+#init_angle = random_angles()
+init_pert = init_angles
 
 print("Initial angles: ", init_pert)
 
-act_mat = integrate(init_pert,t)
+act_mat = adim_integrate(init_pert,t)
 print("Final angles:", act_mat.T[-1])
 
 kplt.plot_phase_coherence(act_mat)
