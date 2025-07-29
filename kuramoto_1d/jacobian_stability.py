@@ -59,8 +59,8 @@ sp.pprint(J)
 
 #Substituting variables
 subs = {
-    phi2: -2*np.pi/3,
-    phi3: 2*np.pi/3,
+    phi2: np.pi/3,
+    phi3: -np.pi/3,
     w[0]: 0,
     w[1]: 0,
     w[2]: 0

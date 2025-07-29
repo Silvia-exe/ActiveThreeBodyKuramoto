@@ -47,7 +47,7 @@ def adim_integrate(angles,t):
 
 
 N = 3 #Number of nodes
-T = 50 #Total integration time
+T = 20 #Total integration time
 dt = 0.01 #Time step
 t = np.linspace(0,T,int(T/dt)) #Timesteps to integrate
 nat_freq = np.zeros(N) #Natural frequencies of oscillators
@@ -56,14 +56,16 @@ pert = epsilon_i() #Vector of small angle perturbations
 K1 = 1
 K2 = 4
 
-K12 = 0
+K12 = 0.1
 
-#init_angles = np.array([2*np.pi*np.random.uniform(-1,1) for _ in range(N)]) #Random initial angles
+angles = (0,0,2*np.pi/3)
+
+init_angles = np.array([2*np.pi*np.random.uniform(-1,1) for _ in range(N)]) #Random initial angles
 
 #init_angles = [0,np.pi/3,2*np.pi/3,3*np.pi/3,4*np.pi/3,5*np.pi/3]
-init_angles = (-np.pi/3,0,np.pi/3)
+#init_angles = (-np.pi/3,0,np.pi/3)
 #init_angle = random_angles()
-init_pert = init_angles
+'''init_pert = init_angles
 
 print("Initial angles: ", init_pert)
 
@@ -72,4 +74,4 @@ print("Final angles:", act_mat.T[-1])
 
 kplt.plot_phase_coherence(act_mat)
 kplt.oscillators_comp(act_mat)
-kplt.animate_oscillators(act_mat)
+kplt.animate_oscillators(act_mat)'''
