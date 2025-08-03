@@ -59,11 +59,12 @@ sp.pprint(J)
 
 #Substituting variables
 subs = {
-    phi2: np.pi/3,
-    phi3: -np.pi/3,
+    phi2: np.pi/2,
+    phi3: 0,
     w[0]: 0,
     w[1]: 0,
-    w[2]: 0
+    w[2]: 0,
+    K:1.0 
 }
 
 #Defining characteristic matrix and printing characteristic equation

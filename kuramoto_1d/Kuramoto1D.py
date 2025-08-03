@@ -45,9 +45,8 @@ def adim_integrate(angles,t):
     timeseries = odeint(adim_derivative,angles,t)
     return timeseries.T
 
-
 N = 3 #Number of nodes
-T = 20 #Total integration time
+T = 40 #Total integration time
 dt = 0.01 #Time step
 t = np.linspace(0,T,int(T/dt)) #Timesteps to integrate
 nat_freq = np.zeros(N) #Natural frequencies of oscillators
@@ -56,22 +55,21 @@ pert = epsilon_i() #Vector of small angle perturbations
 K1 = 1
 K2 = 4
 
-K12 = 0.1
+K12 = 0.0
+#init_angles = np.array([2*np.pi*np.random.uniform(-1,1) for _ in range(N)]) #Random initial angles
 
-angles = (0,0,2*np.pi/3)
-
-init_angles = np.array([2*np.pi*np.random.uniform(-1,1) for _ in range(N)]) #Random initial angles
-
-#init_angles = [0,np.pi/3,2*np.pi/3,3*np.pi/3,4*np.pi/3,5*np.pi/3]
+init_angles = [np.pi/3-0.1,-np.pi,-np.pi]
 #init_angles = (-np.pi/3,0,np.pi/3)
 #init_angle = random_angles()
-'''init_pert = init_angles
+init_pert = init_angles
 
 print("Initial angles: ", init_pert)
 
 act_mat = adim_integrate(init_pert,t)
 print("Final angles:", act_mat.T[-1])
 
-kplt.plot_phase_coherence(act_mat)
-kplt.oscillators_comp(act_mat)
-kplt.animate_oscillators(act_mat)'''
+filename = f"0_1D_K_{K12}_dt_{dt}"
+
+kplt.plot_phase_coherence_pair_three(act_mat, title = f'Order parameters for K = {K12}', filename = 'ord_par_'+filename)
+#kplt.oscillators_comp(act_mat)
+kplt.animate_oscillators(act_mat, title = f'K = {K12}'+ r' , $\hat{\psi}=[\pi/3-0.1,-\pi,\pi]$', filename = 'anim_'+filename)

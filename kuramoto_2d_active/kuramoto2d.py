@@ -19,9 +19,9 @@ def simple_run():
         act_mat, pos_mat, neigh_mat = run.run()
         filename = f"K_{K12:.2f}"
         #kplt.animate_active_oscillators(act_mat, pos_mat, Lx = Lx, title = f'Evolution for K ={K12:.2f}', show = True )
-        kplt.plot_phase_coherence_pair_three(act_mat, title = f'Order parameters for K = {K12:.2f}', show = False, filename = 'order_par_'+filename)
-        kplt.plot_frames_from_data(act_mat, pos_mat,filename = 'frames_'+filename, Lx = Lx, title = f'Evolution for K ={K12:.2f}', show = False)
-        run.save_data('N1000_run_'+filename+'_data.h5')
+        kplt.plot_phase_coherence_pair_three(act_mat, title = f'Order parameters for K = {K12:.2f}', show = True)
+        kplt.plot_frames_from_data(act_mat, pos_mat, Lx = Lx, title = f'Evolution for K ={K12:.2f}', show = True)
+        #run.save_data('N1000_run_'+filename+'_data.h5')
 
 def run_plot_all():
     _, Kax = plt.subplots()
@@ -30,16 +30,17 @@ def run_plot_all():
 
     for k in range(len(K12_v)):
         K12 = K12_v[k]
-        filename = f"K_{K12:.2f}"
+        filename = f"N1000_K{K12:.2f}_a3"
         color = cmap(normalize(K12))
         run = ActiveKuramotoAdim(N,K12,Lx,gamma,mov_coef,dt,T)
         print(K12)
-        act_mat, pos_mat,  = run.run()
+        act_mat, pos_mat, neigh_mat = run.run()
         #run.save_data('model_K_'+filename+'_data.h5')
         #kplt.animate_active_oscillators(act_mat, pos_mat, filename= 'animation_'+filename, Lx = Lx, title = f'Evolution for K ={K12:.2f}', show = False )
         kplt.plot_frames_from_data(act_mat, pos_mat,filename = 'frames_'+filename, Lx = Lx, title = f'Evolution for K ={K12:.2f}', show = False)
         kplt.plot_phase_coherence_pair_three(act_mat, title = f'Order parameters for K = {K12:.2f}', filename = 'order_par_'+filename, show = False)
         Kax.plot([kplt.phase_coherence(vec) for vec in act_mat.T], '.', label = f"K = {K12:.2f}", color = color)
+        run.save_data(filename)
         plt.close()
 
     Kax.set_title(r"Order Parameter $R_1(t)$ for different $K = \frac{K_1}{K_2}$")
@@ -81,7 +82,7 @@ def run_average_R():
         R2_K[k] = np.mean(R2_K_mean[k])
         R3_K[k] = np.mean(R3_K_mean[k])
 
-    filename_K = "order_par_means_K.h5"
+    filename_K = "order_par_means_K_a_3.h5"
     with h5py.File(filename_K, "w") as h5f:
         h5f.create_group("parameters")
 
@@ -115,18 +116,13 @@ def run_average_R():
 
 def single_run(args):
     os.system("cls")
-    k, l, K12, N, Lx, gamma, dt, T = args
-    print(K12)
+    k, l, K12, N, Lx, gamma, mov_coef, dt, T = args
+    print('Running for :', K12)
     print(l)
     run = ActiveKuramotoAdim(N, K12, Lx, gamma, mov_coef, dt, T)
-    act_mat, pos_mat,  = run.run()
+    act_mat, pos_mat, neigh_mat = run.run()
     R1, R2, R3 = kplt.return_phase_mean(act_mat)
-    '''if l%10 == 0:
-        filename = f"model_K_{K12:.2f}_data_N1k.h5"
-        with h5py.File(filename, "a") as dyn:
-            dyn.create_group("dynamics/it"+str(l))
-            dyn.create_dataset("dynamics/it"+str(l)+"/act_mat", data = act_mat, compression='gzip', dtype = np.single, chunks = True, compression_opts = 6)
-            dyn.create_dataset("dynamics/it"+str(l)+"/pos_mat", data = pos_mat, compression='gzip', dtype = np.single, chunks = True, compression_opts = 6)'''
+
     return (k, l, R1, R2, R3)
 
 def run_average_R_parallel():
@@ -142,7 +138,7 @@ def run_average_R_parallel():
     all_jobs = []
     for k, K12 in enumerate(K12_v):
         for l in range(M):
-            all_jobs.append((k, l, K12, N, Lx, gamma, dt, T))
+            all_jobs.append((k, l, K12, N, Lx, gamma, mov_coef, dt, T))
 
     # Run in parallel
     with ProcessPoolExecutor(max_workers=os.cpu_count()-1 or 1) as executor:
@@ -158,7 +154,7 @@ def run_average_R_parallel():
         R3_K[k] = np.mean(R3_K_mean[k])
 
     # Save summary results
-    filename = "order_par_means_K_rho4_N100"
+    filename = f"order_par_means_K_rho{(N/Lx**2):.2f}_N{N}_a{a}"
     with h5py.File(filename+".h5", "w") as h5f:
         h5f.create_group("parameters")
         para_list = []
@@ -166,6 +162,7 @@ def run_average_R_parallel():
         para_list += [("/parameters/T", T)]
         para_list += [("/parameters/dt", dt)]
         para_list += [("/parameters/Lx", Lx)]
+        para_list += [("/parameters/mov_coef", mov_coef)]
         para_list += [("/parameters/gamma", gamma)]
 
         for element in para_list:
@@ -267,7 +264,6 @@ def plot_clusters(pos_mat, clusters, t):
     plt.ylabel('y')
     plt.show()
 
-
 def plot_single_cluster(pos_mat, cluster, t):
     """
     positions: np.array of shape (N, 2, T)
@@ -297,30 +293,33 @@ if __name__ == "__main__":
     K2 = 3.0
     #K12_v = [0.0,4.0]
     K12 = 4.0
-    #K12_v = np.linspace(0, 4.0, 3)
-    Lx = 5
+    K12_v = np.linspace(0, 4.0, 10)
+    Lx = 15.81
     v = 1.0
-    mov_coef = 1.0
+    mov_coef = 3.0
     gamma = 10
-    dt = 0.0005
+    dt = 0.01
+    dt_list = [0.00004]
     T = 150
 
     #simple_run()
     #init_cond = ActiveKuramotoAdim(N,K12,Lx,gamma,mov_coef,dt,T)
-    #init_cond.save_data("initial_conditions_N100.h5")
+    #init_cond.save_data("initial_conditions_N1000.h5")
+    for idt in dt_list:
+        dt = idt
+        print('Running for dt = ', dt)
+        run = ActiveKuramotoAdim(N,K12,Lx,gamma,mov_coef,dt,T)
+        #kplt.plot_frames_from_data(run.act_mat, run.pos_mat, title = '', Lx = Lx, show = True,  filename = None)
+        run.initialize_from_h5("../initial_conditions_N100.h5")
+        #kplt.plot_frames_from_data(run.act_mat, run.pos_mat, title = '', Lx = Lx, show = True,  filename = None)
+        print(f"Running for {run.K12}, and dt {run.dt}")
 
-    run = ActiveKuramotoAdim(N,K12,Lx,gamma,mov_coef,dt,T)
-    kplt.plot_frames_from_data(run.act_mat, run.pos_mat, title = '', Lx = Lx, show = True,  filename = None)
-    run.initialize_from_h5("../initial_conditions_N100.h5")
-    kplt.plot_frames_from_data(run.act_mat, run.pos_mat, title = '', Lx = Lx, show = True,  filename = None)
-    print("Running for ", run.K12)
+        act_mat, pos_mat, neigh_mat = run.run()
 
-    act_mat, pos_mat, neigh_mat = run.run()
+        filename = f"run_dt_{run.dt}_K_{run.K12}_N_{run.N}"
 
-    filename = f"dt0-0005_test_K_{K12:.2f}"
-    #kplt.animate_active_oscillators(act_mat, pos_mat, Lx = Lx, title = f'Evolution for K ={K12:.2f}', show = True, filename = filename )
-    kplt.plot_phase_coherence_pair_three(act_mat, title = f'Order parameters for K = {K12:.2f}', show = True, filename = filename )
-    run.save_data(filename+'_data.h5')
+        kplt.plot_phase_coherence_pair_three(act_mat, title = f'Order parameters for K = {K12:.2f}', show = False, filename = filename )
+        run.save_data(filename+'_data')
 
     #print(run.T)
 

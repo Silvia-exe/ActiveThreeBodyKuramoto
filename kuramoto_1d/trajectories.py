@@ -10,36 +10,31 @@ from scipy.integrate import solve_ivp
 from scipy.optimize import root
 
 #Defining symbols for Jacobian, to analyze Fixed Point stability
-w = sp.symbols('w1:5') # w1 to w4
-K = sp.symbols('K') #Coupling parameter
+sw = sp.symbols('sw1:5') # sw1 to sw4
+sK = sp.symbols('sK') #Coupling parameter
 sphi2, sphi3 = sp.symbols('sphi2 sphi3') #Symbols for Jacobian
 lam = sp.Symbol('lambda') #Lambda symbol for eigenvalues
-variables_movfr = [sphi2, sphi3] #ph2 = th2-th1 and ph3 = th3-th1
+variables_movfr = [sphi2, sphi3] #sph2 = th2-th1 and sph3 = th3-th1
 
 #Moving frame for adimensional Kuramoto model, 1D, 3-node system
 f_movfr_N3_adim = [
-    w[2] - w[1] + K*(sp.sin(sphi3-sphi2)-2*sp.sin(sphi2)-sp.sin(sphi3)) + (sp.sin(sphi3-2*sphi2)-sp.sin(sphi2+sphi3)),
-    w[3] - w[1] + K*(sp.sin(sphi2-sphi3)-2*sp.sin(sphi3)-sp.sin(sphi2)) + (sp.sin(sphi2-2*sphi3)-sp.sin(sphi3+sphi2))
+    sw[2] - sw[1] + sK*(sp.sin(sphi3-sphi2)-2*sp.sin(sphi2)-sp.sin(sphi3)) + (sp.sin(sphi3-2*sphi2)-sp.sin(sphi2+sphi3)),
+    sw[3] - sw[1] + sK*(sp.sin(sphi2-sphi3)-2*sp.sin(sphi3)-sp.sin(sphi2)) + (sp.sin(sphi2-2*sphi3)-sp.sin(sphi3+sphi2))
 ]
 
-#Global parameters
-w1, w2, w3 = 0.0, 0.0, 0.0 #Natural frequencies
-K1, K2 = 1.0, 2.0 #Coupling parameters for pairwise and threewise interactions
-K12 = 0.2 #Coupling parameter for adimensionalized model K = K1/K2
-
 #Plotting parameters and sampling
-unit   = 1/3 #For labelling every third of pi
+unit = 1/3 #For labelling every third of pi
 axis_tick = np.arange(-1, 1+unit, unit) #For ticks of the acis
 axis_label = [r"$-\pi$",r"$-2\frac{\pi}{3}$" ,r"$-\frac{\pi}{3}$", r"$0$", r"$\frac{\pi}{3}$",   r"$2\frac{\pi}{3}$",r"$\pi$"]
 
-N = 113 #Number of angles to sample
+N = 111 #Number of angles to sample
 phi_frac = np.array([np.pi,np.pi/2,np.pi/3,2*np.pi/3, np.pi/4, 3*np.pi/4, np.pi/6, 5*np.pi/6]) #Some angles of interest that must be sampled
 
-phi2_vals = np.linspace(-np.pi-np.pi/8, np.pi+np.pi/8, N)
+phi2_vals = np.linspace(-np.pi, np.pi, N)
 phi2_vals = np.append(phi2_vals, [phi_frac,-phi_frac])
 phi2_vals = np.unique(np.sort(phi2_vals),axis = 0)
 
-phi3_vals = np.linspace(-np.pi-np.pi/8, np.pi+np.pi/8, N)
+phi3_vals = np.linspace(-np.pi, np.pi, N)
 phi3_vals = np.append(phi3_vals, [phi_frac,-phi_frac])
 phi3_vals = np.unique(np.sort(phi3_vals),axis = 0)
 
@@ -81,14 +76,15 @@ def plot_nullclines():
                          subplot_kw={"xlabel": r'$\psi_2$', "ylabel": r'$\psi_3$'})
     K_vals = [0,0.15,0.3,0.6,1.0,1.5,2.0,3.0,4.0]
     axes = axes.flatten()
-    markers = ['o', r'$\infty$', '*',r'$\asymp$',r'$\parallel$']
+    markers = ['.', r'$\infty$', '*',r'$\asymp$',r'$\odot$','1']
+    #markers = [Node, Spiral,Degenerate Node, Saddle, Center, Line]
     colors = ['r', 'b']
     used_marker_styles = set()
 
     for i, (ax, k) in enumerate(zip(axes,K_vals)):
         Dphi2, Dphi3, fixed_points = compute_nullclines(k)
-        ax.contour(phi2, phi3, Dphi2, levels=[0], colors='C0', linestyles='-')
-        ax.contour(phi2, phi3, Dphi3, levels=[0], colors='orange', linestyles='-')
+        ax.contour(phi2, phi3, Dphi2, levels=[0], colors='C0', linestyles='-', zorder = 1)
+        ax.contour(phi2, phi3, Dphi3, levels=[0], colors='orange', linestyles='-', zorder = 1)
 
         for fp in fixed_points:
             psi2, psi3 = fp[0], fp[1]
@@ -98,7 +94,7 @@ def plot_nullclines():
             color = colors[stability]
             marker = markers[fp_type]
 
-            ax.scatter(psi2, psi3, color=color, marker=marker, s=80)
+            ax.scatter(psi2, psi3, color=color, marker=marker, s=150, zorder = 2)
             used_marker_styles.add((marker, color, stability, fp_type))
 
         ax.set_title(f"K={k:.2f}")
@@ -121,34 +117,36 @@ def plot_nullclines():
             ax.set_yticklabels([])
             ax.set_ylabel('')
 
-        if i == 5:
-            nullcline_legend = [
-                Line2D([0], [0], color='C0', linestyle='-', label=r'$d{\psi}_2 = 0$'),
-                Line2D([0], [0], color='orange', linestyle='-', label=r'$d{\psi}_3 = 0$')
-            ]
-            label_map = {
-                ('o', 0): 'Unstable Node',
-                ('o', 1): 'Stable Node',
-                (r'$\infty$', 0): 'Unstable Spiral',
-                (r'$\infty$', 1): 'Stable Spiral',
-                ('*', 0): 'Unstable Degenerate Node',
-                ('*', 1): 'Stable Degenerate Node',
-                (r'$\asymp$', 0): 'Saddle Point',
-                (r'$\parallel$', 1): 'Center / Line'
-            }
+    nullcline_legend = [
+        Line2D([0], [0], color='C0', linestyle='-', label=r'$d{\psi}_2 = 0$'),
+        Line2D([0], [0], color='orange', linestyle='-', label=r'$d{\psi}_3 = 0$')
+    ]
+    label_map = {
+        ('.', 0): 'Source',
+        ('.', 1): 'Sink',
+        (r'$\infty$', 0): 'Unstable Spiral',
+        (r'$\infty$', 1): 'Stable Spiral',
+        ('*', 0): 'Degenerate Source',
+        ('*', 1): 'Degenerate Sink',
+        (r'$\asymp$', 0): 'Saddle Point',
+        (r'$\odot$', 1): 'Center',
+        (r'$\odot$', 0): 'Center',
+        ('1', 0): 'Repulsive Line',
+        ('1', 1): 'Attractor Line'
+    }
 
-            marker_legend = []
-            for marker, color, stability, fp_type in used_marker_styles:
-                label = label_map.get((marker, stability), f"Type {fp_type}")
-                marker_legend.append(Line2D([0], [0], marker=marker, color=color, label=label,
-                                             linestyle='None', markersize=10))
+    marker_legend = []
+    for marker, color, stability, fp_type in used_marker_styles:
+        label = label_map.get((marker, stability), f"Type {fp_type}")
+        marker_legend.append(Line2D([0], [0], marker=marker, color=color, label=label,
+                                     linestyle='None', markersize=13))
 
-            all_handles = nullcline_legend + marker_legend
-            ax.legend(handles=all_handles,
-              loc='center left',
-              bbox_to_anchor=(1.05, 0.5),
-              borderaxespad=0.,
-              title="Fixed points")
+    all_handles = nullcline_legend + marker_legend
+    axes[5].legend(handles=all_handles,
+      loc='center left',
+      bbox_to_anchor=(1.05, 0.5),
+      borderaxespad=0.,
+      title="Fixed points")
 
     fig.suptitle("Nullclines")
 
@@ -239,7 +237,7 @@ def plot_vector_field(N=30):
 def plot_trajectories(Tmax=40, skip=50):
     N= len(phi2_vals) #Updating the number of angles to sample
     fig, ax = plt.subplots(figsize=(9, 8))
-    t_eval = np.linspace(0, Tmax, int(Tmax/0.01)) #Time vector to integrate
+    t_eval = np.linspace(0, Tmax, int(Tmax/0.02)) #Time vector to integrate
     final_states = []
     for phi2_0 in phi2_vals:
         for phi3_0 in phi3_vals:
@@ -390,10 +388,10 @@ def classify_fp(fixed_points, k):
         subs = {
             sphi2: fp[0],
             sphi3: fp[1],
-            w[0]: 0,
-            w[1]: 0,
-            w[2]: 0,
-            K: k
+            sw[0]: 0,
+            sw[1]: 0,
+            sw[2]: 0,
+            sK: k
         }
         J_eval = J.subs(subs)
         trace = J_eval.trace()
@@ -408,31 +406,33 @@ def classify_fp(fixed_points, k):
 
         fp_classification[i, 2] = 1 if is_stable else 0
 
-        if determinant < 0:
+        if abs(discriminant) < epsilon and determinant > 0:
+             fp_classification[i, 3] = 2  # Degenerate Node
+        elif abs(trace) < epsilon and determinant > 0:
+            fp_classification[i, 3] = 4  # Center
+        elif abs(determinant) < epsilon:
+            fp_classification[i,3] = 5 #Line
+        elif determinant < 0:
             fp_classification[i, 3] = 3  # Saddle
         elif discriminant > 0 and determinant > 0:
             fp_classification[i, 3] = 0  # Node
         elif discriminant < 0 and determinant > 0:
             fp_classification[i, 3] = 1  # Spiral
-        elif discriminant == 0 and determinant > 0:
-            fp_classification[i, 3] = 2  # Degenerate Node
-        elif trace == 0:
-            fp_classification[i, 3] = 4  # Line / Center
         else:
-            fp_classification[i, 3] = -1  # Undefined/edge case
+            fp_classification[i, 3] = -2  # Undefined/edge case
 
     return fp_classification
 
 #Plots basins of attraction for trajectories of initial condition sweep
-def plot_basins(Tmax=50):
-
+def plot_basins(k, Tmax=50):
+    print(f"Running for K = {k}")
     N= len(phi2_vals) #Updating the number of angles to sample
     fig, ax = plt.subplots(figsize=(9, 8))
-    t_eval = np.linspace(0, Tmax, int(Tmax/0.01)) #Time vector to integrate
+    t_eval = np.linspace(0, Tmax, int(Tmax/0.02)) #Time vector to integrate
     final_states = []
     for phi2_0 in phi2_vals:
         for phi3_0 in phi3_vals:
-            sol = solve_ivp(adim_N3_Kuramoto, [0, Tmax], [phi2_0, phi3_0], t_eval=t_eval, method = 'Radau', args = [K,]) #Getting trajectories with Radau (for stiff equations)
+            sol = solve_ivp(adim_N3_Kuramoto, [0, Tmax], [phi2_0, phi3_0], t_eval=t_eval, args = [k,]) #Getting trajectories
             phi2_traj, phi3_traj = sol.y
             phi2_final, phi3_final = sol.y[0, -1], sol.y[1, -1]
             final_states.append([(phi2_final+np.pi)%(2*np.pi)-np.pi, (phi3_final+np.pi)%(2*np.pi)-np.pi])
@@ -442,7 +442,7 @@ def plot_basins(Tmax=50):
     final_states_unique= np.unique((np.array(final_states).round(1)),axis=0)
     final_states_unique_abs, final_state_inv  = np.unique(np.sort(abs(np.array(final_states)).round(1)),axis=0,return_inverse = True)
 
-    print(final_states_unique)
+    #print(final_states_unique)
     final_state_inv = (np.reshape(final_state_inv,(N,N)))
 
     #Making labels from the unique fixed points
@@ -461,7 +461,7 @@ def plot_basins(Tmax=50):
     ax.set_ylim([-np.pi, np.pi])
     ax.set_xlabel(r'$\psi_2$')
     ax.set_ylabel(r'$\psi_3$')
-    ax.set_title('Basins of attraction for $K=$' + str(K12))
+    ax.set_title('Basins of attraction for $K=$' + str(k))
     ax.set_yticks(axis_tick*np.pi)
     ax.set_xticks(axis_tick*np.pi)
     ax.set_yticklabels(axis_label, fontsize=12)
@@ -469,13 +469,13 @@ def plot_basins(Tmax=50):
     plt.tight_layout()
     ax.grid(which='major', color='#DDDDDD', linewidth=0.8, linestyle= ":")
 
-    fig.savefig(f'basins_N_{N}_K_{K12:.2f}.png', dpi=300, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    fig.savefig(f'basins_N_{N}_K_{k:.2f}.png', dpi=300, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
-    with h5py.File(f'basins_N_{N}_K_{K12:.2f}.h5','w') as h5f:
+    with h5py.File(f'basins_N_{N}_K_{k:.2f}.h5','w') as h5f:
         h5f.create_group('parameters')
 
         para_list = []
-        para_list += [("/parameters/K", K12)]
+        para_list += [("/parameters/K", k)]
         para_list += [("/parameters/T", Tmax)]
 
         for element in para_list:
@@ -489,9 +489,15 @@ def plot_basins(Tmax=50):
         h5f.create_dataset("fp_list/fp_list", data = final_states_unique, compression= "gzip", dtype = np.single, chunks = True, compression_opts = 6)
         h5f.create_dataset("fp_list_abs/fp_list_abs", data = final_states_unique_abs, compression= "gzip", dtype = np.single, chunks = True, compression_opts = 6)
 
-    plt.show()
+    #plt.show()
 
+#Global parameters
+w1, w2, w3 = 0.0, 0.0, 0.0 #Natural frequencies
+K1, K2 = 1.0, 2.0 #Coupling parameters for pairwise and threewise interactions
+K_vals = [0,0.15,0.3,0.6,1.0,1.5,2.0,3.0,4.0]
+K12 = 0.2 #Coupling parameter for adimensionalized model K = K1/K2
 #plot_trajectories()
 #plot_vector_field()
-#plot_basins()
+#for k in K_vals:
+#    plot_basins(k, Tmax = 40)
 plot_nullclines()

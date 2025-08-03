@@ -132,7 +132,7 @@ class ActiveKuramotoAdim:
         self.neigh_mat[:, :, 0] = self.neigh
 
     def save_data(self, filename):
-        with h5py.File("../"+filename, "w") as h5f:
+        with h5py.File("../"+filename+'.h5', "w") as h5f:
             h5f.create_group("parameters")
             h5f.create_group("dynamics/it0")
 
@@ -147,6 +147,10 @@ class ActiveKuramotoAdim:
 
             for element in para_list:
                 h5f.create_dataset(element[0],data=element[1])
+
+            #h5f.create_dataset("dynamics/it0/act_mat", data = self.act_mat, compression= "gzip", dtype = np.single, chunks = True, compression_opts = 6)
+            #h5f.create_dataset("dynamics/it0/pos_mat", data = self.pos_mat, compression= "gzip", dtype = np.single, chunks = True, compression_opts = 6)
+            #h5f.create_dataset("dynamics/it0/neigh_mat", data = self.neigh_mat, compression= "gzip", dtype = np.int32, chunks = True, compression_opts = 6)
 
             h5f.create_dataset("dynamics/it0/act_mat", data = self.act_mat[:,::2], compression= "gzip", dtype = np.single, chunks = True, compression_opts = 6)
             h5f.create_dataset("dynamics/it0/pos_mat", data = self.pos_mat[:,:,::2]%self.Lx, compression= "gzip", dtype = np.single, chunks = True, compression_opts = 6)
